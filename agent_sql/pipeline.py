@@ -7,6 +7,7 @@ from typing import Any, Protocol
 from rapidfuzz import fuzz
 
 from .database import MAX_RESULTS, DatabaseUnavailable
+from .date_extraction import extract_relative_month_range
 from .guardrails import obvious_rejection
 from .llm import PlanExtractionError
 from .models import AgentResult, Intent, ProcessingStep, QueryPlan, ResolvedFilters, SessionContext
@@ -48,9 +49,11 @@ def apply_result_controls(message: str, plan: QueryPlan) -> QueryPlan:
     return plan.model_copy(update={"result_limit": max(1, requested), "sort_order": "latest"})
 
 
-def _message_mentions_camera(message: str, cameras: list[dict[str, Any]]) -> bool:
+def _camera_mentions(message: str, cameras: list[dict[str, Any]]) -> list[str]:
     lowered = message.casefold()
+    mentions: list[str] = []
     for camera in cameras:
+        canonical = str(camera.get("camera_name", "")).strip()
         terms = [camera.get("camera_name", ""), camera.get("acronym", "")]
         terms.extend(camera.get("aliases", []))
         for raw_term in terms:
@@ -58,10 +61,14 @@ def _message_mentions_camera(message: str, cameras: list[dict[str, Any]]) -> boo
             if not term:
                 continue
             if len(term) <= 4 and re.search(rf"\b{re.escape(term)}\b", lowered):
-                return True
+                if canonical and canonical not in mentions:
+                    mentions.append(canonical)
+                break
             if len(term) > 4 and fuzz.partial_ratio(term, lowered) >= 88:
-                return True
-    return False
+                if canonical and canonical not in mentions:
+                    mentions.append(canonical)
+                break
+    return mentions
 
 
 def apply_context_policy(
@@ -75,9 +82,22 @@ def apply_context_policy(
         "inherit_date": False,
         "inherit_time": False,
     }
-    if not _message_mentions_camera(message, cameras):
-        updates["camera_terms"] = []
+    updates["camera_terms"] = _camera_mentions(message, cameras)
     return plan.model_copy(update=updates)
+
+
+def apply_deterministic_date_extraction(message: str, plan: QueryPlan) -> QueryPlan:
+    relative_month_range = extract_relative_month_range(message)
+    if relative_month_range is None:
+        return plan
+    return plan.model_copy(
+        update={
+            "intent": Intent.QUERY,
+            "rejection_reason": None,
+            "date_window": relative_month_range,
+            "inherit_date": False,
+        }
+    )
 
 
 def _filter_summary(
@@ -185,6 +205,7 @@ def run_query(
             normalized_message,
             planner.extract_query_plan(normalized_message, context),
         )
+        plan = apply_deterministic_date_extraction(normalized_message, plan)
         cameras = repository.camera_documents()
         plan = apply_context_policy(normalized_message, plan, cameras)
         steps.append(

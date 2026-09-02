@@ -79,6 +79,26 @@ def test_recurring_weekday_only_builds_matching_intervals():
     assert len(resolved.intervals_utc) == 2
 
 
+def test_relative_month_day_range_uses_global_now():
+    plan = QueryPlan(
+        date_window=DateWindow(
+            kind="relative_month_range", month_offset=-1, start_day=15, end_day=18
+        )
+    )
+    resolved, _ = resolve_query_plan(
+        plan,
+        CAMERAS,
+        now=datetime(2026, 9, 2, 10, tzinfo=timezone.utc),
+    )
+    assert resolved.date_description == "2026-08-15 to 2026-08-18"
+    assert resolved.intervals_utc[0][0] == datetime(
+        2026, 8, 14, 16, tzinfo=timezone.utc
+    )
+    assert resolved.intervals_utc[-1][1] == datetime(
+        2026, 8, 18, 16, tzinfo=timezone.utc
+    )
+
+
 def test_context_inheritance():
     context = SessionContext(
         camera_names=["Pan Island Expressway"],

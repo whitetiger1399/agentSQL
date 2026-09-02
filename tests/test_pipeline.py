@@ -123,3 +123,21 @@ def test_fresh_date_query_does_not_inherit_or_copy_previous_camera():
             "$lt": datetime(2026, 7, 31, 16, tzinfo=timezone.utc),
         }
     }
+
+
+def test_relative_month_range_overrides_model_unsupported_rejection():
+    repo = FakeRepository([{"frame_id": 1}])
+    rejected_plan = QueryPlan(
+        intent="reject", rejection_reason="Relative month ranges are unsupported."
+    )
+    result = run_query(
+        "Show PIE frames from the 15th to 18th of last month",
+        SessionContext(),
+        FakePlanner(rejected_plan),
+        repo,
+        now=datetime(2026, 9, 2, tzinfo=timezone.utc),
+    )
+    assert result.status == "ok"
+    assert result.message == (
+        "Found 1 frame for Pan Island Expressway (2026-08-15 to 2026-08-18)."
+    )

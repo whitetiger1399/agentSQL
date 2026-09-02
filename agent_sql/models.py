@@ -21,6 +21,7 @@ class DateKind(str, Enum):
     EXACT = "exact"
     RANGE = "range"
     RELATIVE = "relative"
+    RELATIVE_MONTH_RANGE = "relative_month_range"
 
 
 class RelativePeriod(str, Enum):
@@ -45,6 +46,9 @@ class DateWindow(StrictModel):
     end_date: date | None = None
     relative_period: RelativePeriod | None = None
     relative_count: int | None = Field(default=None, ge=1, le=366)
+    month_offset: int | None = Field(default=None, ge=-24, le=24)
+    start_day: int | None = Field(default=None, ge=1, le=31)
+    end_day: int | None = Field(default=None, ge=1, le=31)
 
     @model_validator(mode="after")
     def validate_shape(self) -> "DateWindow":
@@ -62,6 +66,13 @@ class DateWindow(StrictModel):
             RelativePeriod.NEXT_N_DAYS,
         } and self.relative_count is None:
             raise ValueError("relative_count is required for an N-day window")
+        if self.kind == DateKind.RELATIVE_MONTH_RANGE:
+            if self.month_offset is None or self.start_day is None or self.end_day is None:
+                raise ValueError(
+                    "month_offset, start_day, and end_day are required for a relative month range"
+                )
+            if self.end_day < self.start_day:
+                raise ValueError("end_day must not be before start_day")
         return self
 
 

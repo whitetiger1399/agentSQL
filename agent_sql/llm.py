@@ -26,6 +26,11 @@ valid broad frame query, omitted filters may remain empty. A request beginning w
 camera into camera_terms when no camera appears in the new request. Inherit filters
 only for clear follow-ups such as "now", "then", "same", or "what about".
 
+For day ranges within a relative month, use date_window.kind
+"relative_month_range": "last month" is month_offset -1, "this month" is 0, and
+"next month" is 1. Put the ordinal days in start_day and end_day. For example,
+"15th to 18th of last month" is month_offset -1, start_day 15, end_day 18.
+
 For requests such as "latest 5 frames", "last 10 rows", or the common typo
 "lastest 5 frames", set sort_order to "latest" and result_limit to that number.
 Never set a result_limit above 100.

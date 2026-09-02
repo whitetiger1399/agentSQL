@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import calendar
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -112,6 +113,20 @@ def _date_bounds(window: DateWindow, now: datetime) -> tuple[date | None, date |
     if window.kind == DateKind.RANGE:
         assert window.start_date is not None and window.end_date is not None
         return window.start_date, window.end_date, f"{window.start_date.isoformat()} to {window.end_date.isoformat()}"
+    if window.kind == DateKind.RELATIVE_MONTH_RANGE:
+        assert window.month_offset is not None
+        assert window.start_day is not None and window.end_day is not None
+        month_index = today.year * 12 + (today.month - 1) + window.month_offset
+        year, zero_based_month = divmod(month_index, 12)
+        month = zero_based_month + 1
+        final_day = calendar.monthrange(year, month)[1]
+        if window.start_day > final_day or window.end_day > final_day:
+            raise ResolutionError(
+                f"That month has only {final_day} days; the requested day range is invalid."
+            )
+        first = date(year, month, window.start_day)
+        last = date(year, month, window.end_day)
+        return first, last, f"{first.isoformat()} to {last.isoformat()}"
 
     period = window.relative_period
     if period == RelativePeriod.TODAY:

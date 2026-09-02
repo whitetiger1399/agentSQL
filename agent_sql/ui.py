@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import html
+from datetime import datetime, timezone
 from typing import Any, Mapping
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
@@ -370,6 +372,13 @@ def sql_agent_page() -> None:
             st.session_state.chat_messages = _initial_chat()
         if "query_context" not in st.session_state:
             st.session_state.query_context = SessionContext().model_dump(mode="json")
+        if "session_now_utc" not in st.session_state:
+            st.session_state.session_now_utc = datetime.now(timezone.utc).isoformat()
+        session_now = datetime.fromisoformat(st.session_state.session_now_utc)
+        st.caption(
+            "Session date: "
+            + session_now.astimezone(ZoneInfo("Asia/Singapore")).strftime("%d %b %Y, %I:%M %p SGT")
+        )
         conversation = st.container(height=560, border=True)
         with conversation:
             for item in st.session_state.chat_messages:
@@ -390,6 +399,7 @@ def sql_agent_page() -> None:
                         SessionContext.model_validate(st.session_state.query_context),
                         planner(settings.openai_api_key, settings.openai_model),
                         repo,
+                        now=session_now,
                     )
             except ConfigurationError as exc:
                 result = AgentResult(
