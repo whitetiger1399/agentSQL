@@ -21,7 +21,10 @@ provided. For relative dates, use the relative enum and count fields. An end_dat
 inclusive. Weekday names are lowercase. Times contain no timezone. Set inheritance
 flags only when the user is clearly following up and omits that filter. Use
 reset_context when the user asks to start over or clear filters. If the request is a
-valid broad frame query, omitted filters may remain empty.
+valid broad frame query, omitted filters may remain empty. A request beginning with
+"show", "find", "get", or "list" is normally a fresh query: do not copy an old
+camera into camera_terms when no camera appears in the new request. Inherit filters
+only for clear follow-ups such as "now", "then", "same", or "what about".
 
 For requests such as "latest 5 frames", "last 10 rows", or the common typo
 "lastest 5 frames", set sort_order to "latest" and result_limit to that number.

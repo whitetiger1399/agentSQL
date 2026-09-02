@@ -322,6 +322,34 @@ def _collection_panel(repo: MongoRepository | None) -> None:
         st.error(str(exc))
 
 
+def _processing_panel() -> None:
+    st.markdown("### Query processing")
+    st.caption("Safe operational trace · no hidden reasoning or secrets")
+    latest_result: AgentResult | None = None
+    for item in reversed(st.session_state.get("chat_messages", [])):
+        if item.get("role") == "assistant" and item.get("result"):
+            latest_result = AgentResult.model_validate(item["result"])
+            break
+    if latest_result is None or not latest_result.processing_steps:
+        st.info("Run a query to inspect each processing step.")
+        return
+
+    status_icons = {
+        "passed": "✅",
+        "completed": "✅",
+        "rejected": "⛔",
+        "error": "⚠️",
+    }
+    st.caption(f"Final status: **{latest_result.status.upper()}**")
+    for index, step in enumerate(latest_result.processing_steps):
+        icon = status_icons[step.status]
+        with st.expander(
+            f"{icon} {step.name}",
+            expanded=index == len(latest_result.processing_steps) - 1,
+        ):
+            st.json(step.details)
+
+
 def sql_agent_page() -> None:
     hero("SQL Agent", "Chat with a guarded, read-only traffic-camera data agent.", "NATURAL LANGUAGE → MONGODB")
     try:
@@ -379,4 +407,8 @@ def sql_agent_page() -> None:
             )
             st.rerun()
     with data_col:
-        _collection_panel(repo)
+        explorer_tab, processing_tab = st.tabs(["Data Explorer", "Query Processing"])
+        with explorer_tab:
+            _collection_panel(repo)
+        with processing_tab:
+            _processing_panel()

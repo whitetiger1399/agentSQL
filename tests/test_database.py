@@ -30,3 +30,4 @@ def test_unsafe_filters_are_rejected(query):
 def test_datetimes_are_display_safe():
     result = display_safe({"captured_at": datetime(2026, 9, 1)})
     assert result["captured_at"].endswith("+00:00")
+    assert result["captured_at_sgt"] == "2026-09-01T08:00:00+08:00"

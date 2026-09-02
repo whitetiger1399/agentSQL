@@ -28,9 +28,9 @@ python -m pip install -r requirements.txt
 Create `.streamlit/secrets.toml` (already ignored by Git):
 
 ```toml
-MONGODB_URI = "mongodb+srv://..."
+MONGODB_URI = "YOUR_MONGODB_ATLAS_CONNECTION_STRING"
 MONGODB_DATABASE = "traffic_agent"
-OPENAI_API_KEY = "sk-..."
+OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
 OPENAI_MODEL = "gpt-5.4-mini" # optional
 
 # Optional page content
@@ -41,6 +41,9 @@ PROJECT_URL = "https://github.com/you/project"
 ```
 
 Never commit the real file or expose its contents in logs.
+
+Use `.streamlit/secrets.example.toml` as the key-name template. It contains
+placeholders only and is safe to commit.
 
 ## Run
 
@@ -59,3 +62,28 @@ pytest -q
 ```
 
 Tests mock external services and do not require live OpenAI or MongoDB access.
+
+## Deploy with Streamlit Community Cloud
+
+GitHub hosts the source code; Streamlit Community Cloud runs the Python app.
+
+1. Push the repository to GitHub with `.streamlit/secrets.toml` still ignored.
+2. In Streamlit Community Cloud, create an app from this repository and select
+   `app.py` as the entry point.
+3. Open **Advanced settings → Secrets** and paste the real values using the same
+   TOML keys shown in `.streamlit/secrets.example.toml`.
+4. Deploy the app. Streamlit injects those values into `st.secrets` at runtime;
+   they are not added to the GitHub repository.
+5. Allow Streamlit Cloud's outbound access in MongoDB Atlas. For a demo, Atlas
+   can temporarily permit `0.0.0.0/0` only when the database user is strictly
+   read-only and uses a strong password. Restrict network access further for a
+   production deployment.
+
+Before every push, verify the real secret file is ignored:
+
+```bash
+git check-ignore .streamlit/secrets.toml
+git ls-files .streamlit/secrets.toml
+```
+
+The first command should print the filename; the second should print nothing.

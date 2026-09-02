@@ -101,6 +101,12 @@ class ResolvedFilters(StrictModel):
     date_description: str = "Any date"
 
 
+class ProcessingStep(StrictModel):
+    name: str
+    status: Literal["passed", "completed", "rejected", "error"]
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
 class AgentResult(StrictModel):
     status: Literal["ok", "clarification", "rejected", "error"]
     message: str
@@ -109,3 +115,4 @@ class AgentResult(StrictModel):
     result_count: int = Field(default=0, ge=0, le=100)
     context: SessionContext = Field(default_factory=SessionContext)
     suggestions: list[str] = Field(default_factory=list)
+    processing_steps: list[ProcessingStep] = Field(default_factory=list)

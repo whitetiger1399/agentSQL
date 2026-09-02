@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Mapping
+from zoneinfo import ZoneInfo
 
 import certifi
 from bson import ObjectId
@@ -11,6 +12,7 @@ from pymongo.errors import PyMongoError
 
 ALLOWED_COLLECTIONS = ("cameras", "traffic_frames")
 MAX_RESULTS = 100
+SGT = ZoneInfo("Asia/Singapore")
 _ALLOWED_FILTER_FIELDS = {"camera_name", "captured_at"}
 _ALLOWED_OPERATORS = {"$and", "$or", "$in", "$gte", "$lt"}
 
@@ -47,6 +49,8 @@ def display_safe(document: Mapping[str, Any]) -> dict[str, Any]:
         elif isinstance(value, datetime):
             aware = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
             safe[key] = aware.astimezone(timezone.utc).isoformat()
+            if key == "captured_at":
+                safe["captured_at_sgt"] = aware.astimezone(SGT).isoformat()
         elif isinstance(value, list):
             safe[key] = [str(item) if isinstance(item, ObjectId) else item for item in value]
         else:
