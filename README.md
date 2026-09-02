@@ -5,6 +5,18 @@ frames. It combines a multipage Streamlit UI, OpenAI Responses API structured
 output, Pydantic validation, deterministic date/camera resolution, and MongoDB
 Atlas.
 
+## Live App
+
+The Streamlit application has been deployed and is available here for review:
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://sql-agent-by-wt.streamlit.app/)
+
+**[Launch Camera AgentSQL](https://sql-agent-by-wt.streamlit.app/)**
+
+> If the OpenAI rate limit has been reached, or OpenAI is temporarily
+> unresponsive because of token limits or another API issue, please feel free
+> to reach out through the app's **Contact Us** page.
+
 ## Features
 
 - Native Streamlit sidebar/hamburger navigation
@@ -29,7 +41,7 @@ Create `.streamlit/secrets.toml` (already ignored by Git):
 
 ```toml
 MONGODB_URI = "YOUR_MONGODB_ATLAS_CONNECTION_STRING"
-MONGODB_DATABASE = "traffic_agent"
+MONGODB_DATABASE = "assignement01"
 OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
 OPENAI_MODEL = "gpt-5.4-mini" # optional
 
@@ -51,7 +63,7 @@ placeholders only and is safe to commit.
 streamlit run app.py
 ```
 
-The Atlas user should have read-only access to the `traffic_agent` database.
+The Atlas user should have read-only access to the `assignement01` database.
 The app itself exposes only `find` operations on `cameras` and
 `traffic_frames`; all result sets are capped at 100.
 
