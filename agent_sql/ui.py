@@ -423,21 +423,30 @@ def docs_page() -> None:
 
 def architecture_page() -> None:
     hero("Production Architecture", "A constrained path from natural language to read-only results.")
+    st.subheader("Production Architecture 2")
     st.image(
-        DOCS_IMAGE_DIR / "production-architecture.png",
+        DOCS_IMAGE_DIR / "production-architecture-2.png",
         caption=(
-            "End-to-end production flow: Streamlit UI, guarded OpenAI extraction, "
-            "deterministic Python resolution, and read-only MongoDB Atlas access."
+            "GitHub-to-Streamlit deployment and the complete numbered runtime flow. "
+            "Solid arrows stay within a layer; dashed arrows cross layer boundaries."
         ),
         use_container_width=True,
     )
-    with st.expander("View architecture as text"):
+    with st.expander("View Production Architecture 1"):
+        st.image(
+            DOCS_IMAGE_DIR / "production-architecture.png",
+            caption="Original production architecture diagram (preserved).",
+            use_container_width=True,
+        )
+    with st.expander("View Architecture 2 as text"):
         st.code(
-            """User → Streamlit Cloud UI → scope guardrail
+            """Deployment: Developer → GitHub main → Streamlit Cloud → Streamlit App
+
+Runtime: User → Streamlit App ⇢ scope guardrail
      → OpenAI Responses API (entity extraction only)
      → Pydantic QueryPlan → Python camera/date/context resolver
-     → allowlisted filter builder → read-only PyMongo repository
-     → MongoDB Atlas traffic_frames.find() → capped results → Streamlit UI
+     → allowlisted filter builder ⇢ read-only PyMongo repository
+     → MongoDB Atlas traffic_frames.find() ⇢ capped results → Streamlit App
 
 Streamlit Secrets → OPENAI_API_KEY / MONGODB_URI
 Security → read only • 100-row limit • Asia/Singapore to UTC • no LLM-generated queries""",
