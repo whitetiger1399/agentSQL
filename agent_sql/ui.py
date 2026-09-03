@@ -423,22 +423,21 @@ def docs_page() -> None:
 
 def architecture_page() -> None:
     hero("Production Architecture", "A constrained path from natural language to read-only results.")
-    st.subheader("Production Architecture 2")
     st.image(
-        DOCS_IMAGE_DIR / "production-architecture-2.png",
+        DOCS_IMAGE_DIR / "production-architecture-3.png",
         caption=(
             "GitHub-to-Streamlit deployment and the complete numbered runtime flow. "
             "Solid arrows stay within a layer; dashed arrows cross layer boundaries."
         ),
         use_container_width=True,
     )
-    with st.expander("View Production Architecture 1"):
+    with st.expander("View previous architecture"):
         st.image(
-            DOCS_IMAGE_DIR / "production-architecture.png",
+            DOCS_IMAGE_DIR / "production-architecture_backup.png",
             caption="Original production architecture diagram (preserved).",
             use_container_width=True,
         )
-    with st.expander("View Architecture 2 as text"):
+    with st.expander("View architecture as text"):
         st.code(
             """Deployment: Developer → GitHub main → Streamlit Cloud → Streamlit App
 
