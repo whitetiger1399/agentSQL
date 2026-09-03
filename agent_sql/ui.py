@@ -256,10 +256,21 @@ def schema_page() -> None:
     hero("Data Schema & Info", "The read-only collections available to the agent.")
     schema_tab, explorer_tab = st.tabs(["Schema", "Data Explorer"])
     with schema_tab:
-        tab1, tab2 = st.tabs(["cameras", "traffic_frames"])
-        with tab1:
+        selected_schema = st.radio(
+            "Select a table schema",
+            options=["cameras", "traffic_frames"],
+            format_func=lambda name: f"Table · {name}",
+            horizontal=True,
+            key="selected_schema_table",
+        )
+        st.markdown(f"### Table schema: `{selected_schema}`")
+        st.caption("MongoDB collection presented as a read-only table")
+        if selected_schema == "cameras":
             st.markdown(
                 """
+                Reference data used to resolve canonical camera names, acronyms,
+                aliases, and active status.
+
                 | Field | Type | Description |
                 |---|---|---|
                 | `camera_id` | integer | Stable camera identifier |
@@ -269,10 +280,10 @@ def schema_page() -> None:
                 | `active` | boolean | Availability flag |
                 """
             )
-        with tab2:
+        else:
             st.markdown(
                 """
-                MongoDB native time-series collection (`captured_at` time field,
+                MongoDB native time-series table (`captured_at` time field,
                 `camera_name` metadata field, minute granularity).
 
                 | Field | Type | Description |
@@ -283,7 +294,10 @@ def schema_page() -> None:
                 | `frame_img_url` | string | Frame image location |
                 """
             )
-        st.info("The sample dataset contains 7,920 hourly records from 1 August to 2 September 2026.")
+            st.info(
+                "The `traffic_frames` table contains 7,920 hourly frame records "
+                "from 1 August to 2 September 2026."
+            )
     with explorer_tab:
         try:
             schema_repo: MongoRepository | None = get_repository()
@@ -379,25 +393,25 @@ def _collection_panel(repo: MongoRepository | None) -> None:
         return
     if "selected_collection" not in st.session_state:
         st.session_state.selected_collection = "cameras"
-    for name in repo.list_allowed_collections():
-        if st.button(
-            name,
-            key=f"collection_{name}",
-            use_container_width=True,
-            type="primary" if st.session_state.selected_collection == name else "secondary",
-        ):
-            st.session_state.selected_collection = name
+    selected_collection = st.radio(
+        "Select a table to preview",
+        options=repo.list_allowed_collections(),
+        format_func=lambda name: f"Table · {name}",
+        horizontal=True,
+        key="selected_collection",
+    )
+    st.markdown(f"#### Previewing table: `{selected_collection}`")
     try:
         with st.spinner("Loading preview…"):
-            rows = repo.preview_collection(st.session_state.selected_collection, limit=100)
+            rows = repo.preview_collection(selected_collection, limit=100)
         st.caption(
             f"Showing the top {len(rows)} row{'s' if len(rows) != 1 else ''} "
-            f"from `{st.session_state.selected_collection}` (maximum 100)."
+            f"from `{selected_collection}` (maximum 100)."
         )
         if rows:
             _render_paginated_dataframe(
                 rows,
-                key=f"preview_{st.session_state.selected_collection}",
+                key=f"preview_{selected_collection}",
                 page_size=20,
                 height=430,
             )
