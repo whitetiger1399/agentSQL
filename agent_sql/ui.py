@@ -69,6 +69,7 @@ def apply_theme() -> None:
             position: sticky; bottom: .5rem; z-index: 20;
             background: #0B1220; padding: .2rem;
             border: 2px solid #19A89A;
+            overflow: hidden; box-sizing: border-box;
             box-shadow: 0 0 0 1px rgba(25,168,154,.2), 0 7px 22px rgba(0,0,0,.22);
             transition: border-color .18s ease, box-shadow .18s ease;
         }
@@ -76,7 +77,13 @@ def apply_theme() -> None:
             border-color: #35D5C4;
             box-shadow: 0 0 0 3px rgba(25,168,154,.24), 0 8px 24px rgba(0,0,0,.28);
         }
-        div[data-testid="stChatInput"] textarea {min-height: 48px;}
+        div[data-testid="stChatInput"] [data-baseweb="base-input"] {
+            border: 0 !important; box-shadow: none !important;
+            outline: 0 !important; border-radius: 14px !important;
+        }
+        div[data-testid="stChatInput"] textarea {
+            min-height: 48px; outline: 0 !important; box-shadow: none !important;
+        }
         .chat-row {display: flex; width: 100%; gap: .55rem; align-items: flex-end; margin: .75rem 0;}
         .chat-row.agent {justify-content: flex-start; padding-right: 12%;}
         .chat-row.human {justify-content: flex-end; padding-left: 12%;}
