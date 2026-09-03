@@ -230,23 +230,25 @@ def links_page() -> None:
 
 
 def author_page() -> None:
-    hero("Author", "The person behind Camera AgentSQL.")
-    name = optional_content("AUTHOR_NAME", "Your Name")
+    hero("Author & Contact", "The person behind Camera AgentSQL and how to get in touch.")
+    name = optional_content("AUTHOR_NAME", "Ritik Srivastava")
     bio = optional_content(
         "AUTHOR_BIO",
-        "Add AUTHOR_NAME and AUTHOR_BIO to Streamlit secrets to personalize this page.",
+        "Developer of Camera AgentSQL, a guarded natural-language traffic-camera query agent.",
     )
-    st.subheader(name)
-    st.write(bio)
-
-
-def contact_page() -> None:
-    hero("Contact Us", "Questions, feedback, or collaboration.")
-    email = optional_content("CONTACT_EMAIL", "hello@example.com")
-    st.subheader("Get in touch")
-    st.write("For project questions or feedback, reach out by email.")
-    st.link_button(f"Email {email}", f"mailto:{email}")
-    st.caption("Set CONTACT_EMAIL in Streamlit secrets to replace this placeholder.")
+    email = optional_content("CONTACT_EMAIL", "ritiksrivastava144@gmail.com")
+    linkedin = optional_content("AUTHOR_LINKEDIN", "https://www.linkedin.com/in/ritik999/")
+    profile_col, contact_col = st.columns([1.35, 1], gap="large")
+    with profile_col:
+        st.subheader(name)
+        st.write(bio)
+    with contact_col:
+        st.subheader("Get in touch")
+        st.markdown(f"**Email**  \n[{email}](mailto:{email})")
+        st.markdown(f"**LinkedIn**  \n[{linkedin}]({linkedin})")
+        email_col, linkedin_col = st.columns(2)
+        email_col.link_button("Send email", f"mailto:{email}", use_container_width=True)
+        linkedin_col.link_button("LinkedIn", linkedin, use_container_width=True)
 
 
 def schema_page() -> None:

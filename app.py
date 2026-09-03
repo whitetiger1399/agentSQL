@@ -5,7 +5,6 @@ from agent_sql.ui import (
     apply_theme,
     architecture_page,
     author_page,
-    contact_page,
     docs_page,
     links_page,
     render_sidebar_status,
@@ -33,8 +32,7 @@ pages = {
         st.Page(links_page, title="Links", icon="🔗"),
     ],
     "About": [
-        st.Page(author_page, title="Author", icon="👤"),
-        st.Page(contact_page, title="Contact Us", icon="✉️"),
+        st.Page(author_page, title="Author & Contact", icon="👤"),
     ],
 }
 
