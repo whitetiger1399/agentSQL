@@ -30,6 +30,12 @@ def apply_theme() -> None:
         }
         .hero h1 {font-size: 2rem; margin: 0 0 .35rem 0;}
         .hero p {margin: 0; color: #8492a6;}
+        .agent-header {
+            display: flex; align-items: baseline; gap: .8rem; padding: .45rem 0 .6rem;
+            border-bottom: 1px solid rgba(125,125,125,.18); margin-bottom: .65rem;
+        }
+        .agent-header h1 {font-size: 1.65rem; margin: 0; white-space: nowrap;}
+        .agent-header p {margin: 0; color: #8492a6; font-size: .92rem;}
         .eyebrow {font-size: .76rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #29b6a6;}
         .status-pill {padding: .35rem .65rem; border-radius: 999px; border: 1px solid rgba(125,125,125,.25); font-size: .8rem;}
         div[data-testid="stChatMessage"] {
@@ -60,6 +66,8 @@ def apply_theme() -> None:
         }
         div[data-testid="stChatInput"] {
             border-radius: 18px; width: 100%; margin-top: -.55rem;
+            position: sticky; bottom: .5rem; z-index: 20;
+            background: #0B1220; padding-top: .25rem;
         }
         div[data-testid="stChatInput"] textarea {min-height: 48px;}
         .chat-row {display: flex; width: 100%; gap: .55rem; align-items: flex-end; margin: .75rem 0;}
@@ -83,7 +91,11 @@ def apply_theme() -> None:
             text-align: right; background: rgba(25,168,154,.2);
             border-color: rgba(25,168,154,.4); border-radius: 16px 16px 5px 16px;
         }
-        @media (max-width: 900px) {.block-container {padding-left: 1rem; padding-right: 1rem;}}
+        @media (max-width: 900px) {
+            .block-container {padding-left: 1rem; padding-right: 1rem; padding-top: .75rem;}
+            .agent-header {display: block;}
+            .agent-header p {margin-top: .2rem;}
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -353,7 +365,11 @@ def _processing_panel() -> None:
 
 
 def sql_agent_page() -> None:
-    hero("SQL Agent", "Chat with a guarded, read-only traffic-camera data agent.", "NATURAL LANGUAGE → MONGODB")
+    st.markdown(
+        '<div class="agent-header"><h1>SQL Agent</h1>'
+        '<p>Natural language → guarded, read-only MongoDB queries</p></div>',
+        unsafe_allow_html=True,
+    )
     try:
         repo: MongoRepository | None = get_repository()
     except (ConfigurationError, DatabaseUnavailable):
@@ -379,7 +395,7 @@ def sql_agent_page() -> None:
             "Session date: "
             + session_now.astimezone(ZoneInfo("Asia/Singapore")).strftime("%d %b %Y, %I:%M %p SGT")
         )
-        conversation = st.container(height=560, border=True)
+        conversation = st.container(height=360, border=True)
         with conversation:
             for item in st.session_state.chat_messages:
                 _render_chat_bubble(item["role"], item["message"])
