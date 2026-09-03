@@ -254,34 +254,42 @@ def author_page() -> None:
 
 def schema_page() -> None:
     hero("Data Schema & Info", "The read-only collections available to the agent.")
-    tab1, tab2 = st.tabs(["cameras", "traffic_frames"])
-    with tab1:
-        st.markdown(
-            """
-            | Field | Type | Description |
-            |---|---|---|
-            | `camera_id` | integer | Stable camera identifier |
-            | `camera_name` | string | Canonical camera name |
-            | `acronym` | string | Common short name |
-            | `aliases` | string[] | Alternate names |
-            | `active` | boolean | Availability flag |
-            """
-        )
-    with tab2:
-        st.markdown(
-            """
-            MongoDB native time-series collection (`captured_at` time field,
-            `camera_name` metadata field, minute granularity).
+    schema_tab, explorer_tab = st.tabs(["Schema", "Data Explorer"])
+    with schema_tab:
+        tab1, tab2 = st.tabs(["cameras", "traffic_frames"])
+        with tab1:
+            st.markdown(
+                """
+                | Field | Type | Description |
+                |---|---|---|
+                | `camera_id` | integer | Stable camera identifier |
+                | `camera_name` | string | Canonical camera name |
+                | `acronym` | string | Common short name |
+                | `aliases` | string[] | Alternate names |
+                | `active` | boolean | Availability flag |
+                """
+            )
+        with tab2:
+            st.markdown(
+                """
+                MongoDB native time-series collection (`captured_at` time field,
+                `camera_name` metadata field, minute granularity).
 
-            | Field | Type | Description |
-            |---|---|---|
-            | `frame_id` | integer | Stable frame identifier |
-            | `captured_at` | BSON UTC Date | Capture timestamp |
-            | `camera_name` | string | Canonical camera name |
-            | `frame_img_url` | string | Frame image location |
-            """
-        )
-    st.info("The sample dataset contains 7,920 hourly records from 1 August to 2 September 2026.")
+                | Field | Type | Description |
+                |---|---|---|
+                | `frame_id` | integer | Stable frame identifier |
+                | `captured_at` | BSON UTC Date | Capture timestamp |
+                | `camera_name` | string | Canonical camera name |
+                | `frame_img_url` | string | Frame image location |
+                """
+            )
+        st.info("The sample dataset contains 7,920 hourly records from 1 August to 2 September 2026.")
+    with explorer_tab:
+        try:
+            schema_repo: MongoRepository | None = get_repository()
+        except (ConfigurationError, DatabaseUnavailable):
+            schema_repo = None
+        _collection_panel(schema_repo)
 
 
 def _initial_chat() -> list[dict[str, Any]]:
@@ -427,6 +435,30 @@ def _processing_panel() -> None:
             st.json(step.details)
 
 
+def _example_queries_panel() -> None:
+    st.markdown("### Example queries")
+    st.caption("Copy an example into the chat input to explore the data")
+    examples = {
+        "Camera and aliases": [
+            "Show me the latest 5 frames from CTE",
+            "Find frames from East Cost Parkway",
+        ],
+        "Dates and time": [
+            "Show PIE frames between 8 AM and 10 AM yesterday",
+            "Show me frames from the 15th to 18th of last month",
+            "Find CTE frames on Mondays in August 2026",
+        ],
+        "Conversational follow-up": [
+            "Show me frames from CTE",
+            "How about only those from this week?",
+        ],
+    }
+    for category, queries in examples.items():
+        with st.expander(category, expanded=category == "Camera and aliases"):
+            for query in queries:
+                st.code(query, language=None)
+
+
 def sql_agent_page() -> None:
     if "session_now_utc" not in st.session_state:
         st.session_state.session_now_utc = datetime.now(timezone.utc).isoformat()
@@ -522,8 +554,8 @@ def sql_agent_page() -> None:
             st.session_state.scroll_to_latest_answer = True
             st.rerun()
     with data_col:
-        explorer_tab, processing_tab = st.tabs(["Data Explorer", "Query Processing"])
-        with explorer_tab:
-            _collection_panel(repo)
+        examples_tab, processing_tab = st.tabs(["Example Queries", "Query Processing"])
+        with examples_tab:
+            _example_queries_panel()
         with processing_tab:
             _processing_panel()
