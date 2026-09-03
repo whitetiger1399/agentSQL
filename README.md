@@ -15,7 +15,7 @@ The Streamlit application has been deployed and is available here for review:
 
 > If the OpenAI rate limit has been reached, or OpenAI is temporarily
 > unresponsive because of token limits or another API issue, please feel free
-> to reach out through the app's **Contact Us** page.
+> to reach out through the app's **Author & Contact** page.
 
 ## Features
 
@@ -46,9 +46,10 @@ OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
 OPENAI_MODEL = "gpt-5.4-mini" # optional
 
 # Optional page content
-AUTHOR_NAME = "Your Name"
-AUTHOR_BIO = "Your short biography"
-CONTACT_EMAIL = "you@example.com"
+AUTHOR_NAME = "Ritik Srivastava"
+AUTHOR_BIO = "Developer of Camera AgentSQL"
+CONTACT_EMAIL = "ritiksrivastava144@gmail.com"
+AUTHOR_LINKEDIN = "https://www.linkedin.com/in/ritik999/"
 PROJECT_URL = "https://github.com/you/project"
 ```
 
