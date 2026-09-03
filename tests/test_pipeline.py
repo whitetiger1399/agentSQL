@@ -82,6 +82,7 @@ def test_latest_n_query_uses_requested_limit_and_descending_sort():
         SessionContext(),
         planner,
         repo,
+        now=datetime(2026, 9, 2, tzinfo=timezone.utc),
     )
     assert result.status == "ok"
     assert result.result_count == 5
@@ -90,7 +91,9 @@ def test_latest_n_query_uses_requested_limit_and_descending_sort():
     assert planner.message == "Show me frames from PIE latest 5 frames"
     assert result.message == "Found the latest 5 available frames for Pan Island Expressway."
     assert result.interpreted_filters["selection"] == "Latest 5 matching frames"
-    assert result.interpreted_filters["date"] == "No date filter (searching all available dates)"
+    assert result.interpreted_filters["date"] == (
+        "Synthetic data through today: 2026-08-01 to 2026-09-02"
+    )
     assert [step.name for step in result.processing_steps] == [
         "1. Input normalization",
         "2. Pre-query safety checks",
@@ -107,11 +110,11 @@ def test_fresh_date_query_does_not_inherit_or_copy_previous_camera():
     copied_plan = QueryPlan(
         camera_terms=["Pan Island Expressway"],
         inherit_cameras=True,
-        date_window=DateWindow(kind="exact", exact_date=date(2026, 7, 31)),
+        date_window=DateWindow(kind="exact", exact_date=date(2026, 8, 31)),
     )
     repo = FakeRepository()
     result = run_query(
-        "Show me frames on July 31 2026",
+        "Show me frames on August 31 2026",
         context,
         FakePlanner(copied_plan),
         repo,
@@ -122,10 +125,31 @@ def test_fresh_date_query_does_not_inherit_or_copy_previous_camera():
     assert "all cameras" in result.message
     assert repo.filter == {
         "captured_at": {
-            "$gte": datetime(2026, 7, 30, 16, tzinfo=timezone.utc),
-            "$lt": datetime(2026, 7, 31, 16, tzinfo=timezone.utc),
+            "$gte": datetime(2026, 8, 30, 16, tzinfo=timezone.utc),
+            "$lt": datetime(2026, 8, 31, 16, tzinfo=timezone.utc),
         }
     }
+
+
+def test_future_date_is_rejected_without_database_query():
+    repo = FakeRepository()
+    result = run_query(
+        "Show me frames on September 25 2026",
+        SessionContext(),
+        FakePlanner(
+            QueryPlan(
+                date_window=DateWindow(
+                    kind="exact", exact_date=date(2026, 9, 25)
+                )
+            )
+        ),
+        repo,
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+    assert result.status == "clarification"
+    assert "asking for future frames" in result.message
+    assert "synthetic dataset" in result.message
+    assert repo.filter is None
 
 
 def test_relative_month_range_overrides_model_unsupported_rejection():

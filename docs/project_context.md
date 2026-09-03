@@ -13,6 +13,17 @@
 9. Execute a read-only query with a result limit.
 10. Display frame metadata and interpreted filters.
 
+## Synthetic data window
+
+- `traffic_frames` contains synthetic hourly data from 1 August through
+  30 September 2026 (14,640 records across 10 cameras).
+- Future-dated rows exist only to keep relative-date testing useful throughout
+  September—for example, asking for “yesterday” on 25 September.
+- The session date is fixed when the app loads in `Asia/Singapore`.
+- An explicit request after the session date is rejected as a future-frame query.
+- A query with no date is automatically bounded from 1 August through the earlier
+  of the session date or 30 September, so stored future rows are never returned.
+
 ## Example
 
 User:

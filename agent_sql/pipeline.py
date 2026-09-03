@@ -128,11 +128,7 @@ def _filter_summary(
 ) -> dict[str, Any]:
     return {
         "cameras": filters.camera_names or ["All cameras"],
-        "date": (
-            "No date filter (searching all available dates)"
-            if filters.date_description == "Any date"
-            else filters.date_description
-        ),
+        "date": filters.date_description,
         "selection": (
             f"Latest {result_limit} matching frame{'s' if result_limit != 1 else ''}"
             if sort_order == "latest"

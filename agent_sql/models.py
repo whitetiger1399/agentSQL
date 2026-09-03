@@ -109,7 +109,7 @@ class SessionContext(StrictModel):
 class ResolvedFilters(StrictModel):
     camera_names: list[str] = Field(default_factory=list)
     intervals_utc: list[tuple[datetime, datetime]] = Field(default_factory=list)
-    date_description: str = "Any date"
+    date_description: str = "Synthetic data available through today"
 
 
 class ProcessingStep(StrictModel):

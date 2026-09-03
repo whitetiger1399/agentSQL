@@ -125,3 +125,29 @@ def test_filter_uses_only_expected_shape():
             {"captured_at": {"$gte": start, "$lt": end}},
         ]
     }
+
+
+def test_explicit_future_date_is_rejected_against_session_today():
+    plan = QueryPlan(
+        date_window=DateWindow(kind="exact", exact_date=date(2026, 9, 25))
+    )
+    with pytest.raises(ResolutionError, match="asking for future frames"):
+        resolve_query_plan(
+            plan, CAMERAS, now=datetime(2026, 9, 3, tzinfo=timezone.utc)
+        )
+
+
+def test_broad_query_is_bounded_to_dataset_start_and_session_today():
+    resolved, _ = resolve_query_plan(
+        QueryPlan(), CAMERAS, now=datetime(2026, 9, 3, tzinfo=timezone.utc)
+    )
+    assert resolved.date_description == (
+        "Synthetic data through today: 2026-08-01 to 2026-09-03"
+    )
+    assert resolved.intervals_utc[0] == (
+        datetime(2026, 7, 31, 16, tzinfo=timezone.utc),
+        datetime(2026, 8, 1, 16, tzinfo=timezone.utc),
+    )
+    assert resolved.intervals_utc[-1][1] == datetime(
+        2026, 9, 3, 16, tzinfo=timezone.utc
+    )

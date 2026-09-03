@@ -57,8 +57,11 @@ Fields:
 - `camera_name`: canonical string
 - `frame_img_url`: string
 
-The sample dataset contains 7,920 hourly frame records covering
-1 August through 2 September 2026.
+The synthetic sample dataset contains 14,640 hourly frame records covering
+1 August through 30 September 2026. Future-dated records exist only so relative
+date queries can still be tested later in September. The application must reject
+requests for dates after the current Asia/Singapore session date and must not
+return future-dated records through broad queries.
 
 ## Implementation rules
 
