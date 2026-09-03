@@ -36,6 +36,10 @@ def apply_theme() -> None:
         }
         .agent-header h1 {font-size: 1.65rem; margin: 0; white-space: nowrap;}
         .agent-header p {margin: 0; color: #8492a6; font-size: .92rem;}
+        .session-date {
+            margin-left: auto; white-space: nowrap; color: #35D5C4;
+            font-size: .78rem; font-weight: 600; text-align: right;
+        }
         .eyebrow {font-size: .76rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #29b6a6;}
         .status-pill {padding: .35rem .65rem; border-radius: 999px; border: 1px solid rgba(125,125,125,.25); font-size: .8rem;}
         div[data-testid="stChatMessage"] {
@@ -109,6 +113,7 @@ def apply_theme() -> None:
             .block-container {padding-left: 1rem; padding-right: 1rem; padding-top: .75rem;}
             .agent-header {display: block;}
             .agent-header p {margin-top: .2rem;}
+            .session-date {margin-top: .3rem; text-align: left;}
         }
         </style>
         """,
@@ -379,9 +384,16 @@ def _processing_panel() -> None:
 
 
 def sql_agent_page() -> None:
+    if "session_now_utc" not in st.session_state:
+        st.session_state.session_now_utc = datetime.now(timezone.utc).isoformat()
+    session_now = datetime.fromisoformat(st.session_state.session_now_utc)
+    session_date = session_now.astimezone(ZoneInfo("Asia/Singapore")).strftime(
+        "%d %b %Y, %I:%M %p SGT"
+    )
     st.markdown(
         '<div class="agent-header"><h1>SQL Agent</h1>'
-        '<p>Natural language → guarded, read-only MongoDB queries</p></div>',
+        '<p>Natural language → guarded, read-only MongoDB queries</p>'
+        f'<div class="session-date">Session date · {session_date}</div></div>',
         unsafe_allow_html=True,
     )
     try:
@@ -402,14 +414,7 @@ def sql_agent_page() -> None:
             st.session_state.chat_messages = _initial_chat()
         if "query_context" not in st.session_state:
             st.session_state.query_context = SessionContext().model_dump(mode="json")
-        if "session_now_utc" not in st.session_state:
-            st.session_state.session_now_utc = datetime.now(timezone.utc).isoformat()
-        session_now = datetime.fromisoformat(st.session_state.session_now_utc)
-        st.caption(
-            "Session date: "
-            + session_now.astimezone(ZoneInfo("Asia/Singapore")).strftime("%d %b %Y, %I:%M %p SGT")
-        )
-        conversation = st.container(height=360, border=True)
+        conversation = st.container(height=400, border=True)
         with conversation:
             for item in st.session_state.chat_messages:
                 _render_chat_bubble(item["role"], item["message"])
