@@ -67,7 +67,14 @@ def apply_theme() -> None:
         div[data-testid="stChatInput"] {
             border-radius: 18px; width: 100%; margin-top: -.55rem;
             position: sticky; bottom: .5rem; z-index: 20;
-            background: #0B1220; padding-top: .25rem;
+            background: #0B1220; padding: .2rem;
+            border: 2px solid #19A89A;
+            box-shadow: 0 0 0 1px rgba(25,168,154,.2), 0 7px 22px rgba(0,0,0,.22);
+            transition: border-color .18s ease, box-shadow .18s ease;
+        }
+        div[data-testid="stChatInput"]:focus-within {
+            border-color: #35D5C4;
+            box-shadow: 0 0 0 3px rgba(25,168,154,.24), 0 8px 24px rgba(0,0,0,.28);
         }
         div[data-testid="stChatInput"] textarea {min-height: 48px;}
         .chat-row {display: flex; width: 100%; gap: .55rem; align-items: flex-end; margin: .75rem 0;}
