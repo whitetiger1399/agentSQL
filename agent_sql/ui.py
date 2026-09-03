@@ -177,24 +177,183 @@ def render_sidebar_status() -> None:
 
 
 def docs_page() -> None:
-    hero("Documentation", "How to ask safe, useful questions about traffic-camera frames.")
-    st.subheader("Ask naturally")
-    st.markdown(
-        """
-        Try requests such as:
-
-        - `Show me PIE frames between 8 AM and 10 AM yesterday.`
-        - `Find CTE cameras last Monday.`
-        - `Now only show frames after 6 PM.`
-
-        The agent understands camera names, acronyms, aliases, common typos, date ranges,
-        relative dates, weekdays, time windows, and contextual follow-ups.
-        """
+    hero(
+        "Documentation",
+        "Agent architecture, data design, query safety, context handling, and engineering trade-offs.",
     )
-    st.subheader("Safety model")
-    st.info(
-        "The language model creates a validated plan only. Python resolves it and builds an allowlisted, read-only MongoDB filter."
+    data_tab, design_tab, safety_tab, context_tab = st.tabs(
+        ["Data & Schema", "Agent Design", "Safety & Validation", "Context & Reliability"]
     )
+
+    with data_tab:
+        st.subheader("Synthetic traffic-camera dataset")
+        st.markdown(
+            """
+            The sample data was generated as a predictable hourly grid for **10 traffic
+            cameras** across **33 Singapore calendar days**, from 1 August through
+            2 September 2026. That produces `10 × 33 × 24 = 7,920` synthetic frame
+            records. Each record has a stable numeric frame ID, a UTC capture timestamp,
+            a canonical camera name, and a deterministic local image path.
+
+            Dates presented by users are interpreted in `Asia/Singapore`; database
+            timestamps remain UTC. For example, midnight on 1 August in Singapore is
+            stored as `2026-07-31T16:00:00Z`.
+            """
+        )
+        cameras_col, frames_col = st.columns(2, gap="large")
+        with cameras_col:
+            st.markdown("#### Table: `cameras`")
+            st.markdown(
+                """
+                Reference table for entity resolution.
+
+                | Field | Purpose |
+                |---|---|
+                | `camera_id` | Stable integer ID |
+                | `camera_name` | Canonical database value |
+                | `acronym` | Short form such as CTE |
+                | `aliases` | Accepted alternate names |
+                | `active` | Whether the camera is queryable |
+                """
+            )
+        with frames_col:
+            st.markdown("#### Table: `traffic_frames`")
+            st.markdown(
+                """
+                Native MongoDB time-series table.
+
+                | Field | Purpose |
+                |---|---|
+                | `frame_id` | Stable integer ID |
+                | `captured_at` | BSON UTC timestamp |
+                | `camera_name` | Canonical camera metadata |
+                | `frame_img_url` | Stored frame path shown as text |
+                """
+            )
+        st.subheader("Database setup and permissions")
+        st.markdown(
+            """
+            MongoDB Atlas is accessed with a **read-only database user**. Credentials are
+            supplied through Streamlit Secrets and are never committed to GitHub. The
+            application adds a second authorization boundary: its repository exposes
+            preview reads for both tables, but agent-driven user queries can execute only
+            `find` against **`traffic_frames`**. The `cameras` table is used internally for
+            name resolution and cannot be selected as an agent query target.
+            """
+        )
+
+    with design_tab:
+        st.subheader("Deliberately constrained agent design")
+        st.markdown(
+            """
+            The application uses one OpenAI Responses API call for **entity and intent
+            extraction only**. Structured Output must match a strict Pydantic `QueryPlan`
+            containing camera terms, date/time intent, weekday filters, result limit,
+            sort direction, rejection intent, and context flags.
+
+            The LLM does **not** write SQL, MongoDB syntax, PyMongo filters, or executable
+            commands. After extraction, ordinary Python performs every consequential step:
+
+            1. Normalize high-confidence domain typos.
+            2. Run obvious scope and prompt-injection checks.
+            3. Validate structured model output with Pydantic; reject extra fields.
+            4. Resolve canonical cameras with database aliases and RapidFuzz.
+            5. Resolve dates in Singapore time and convert bounds to UTC.
+            6. Merge only relevant structured conversation filters.
+            7. Build a filter from allowlisted fields and operators.
+            8. Execute a capped, read-only `traffic_frames.find(...)` call.
+            9. Show the interpreted filters, processing trace, and table results.
+            """
+        )
+        st.subheader("Tool and model choices")
+        st.markdown(
+            """
+            - **Streamlit** provides a compact multipage review UI and session state.
+            - **OpenAI Responses API + Pydantic** provides typed extraction instead of
+              fragile free-form JSON parsing.
+            - **PyMongo** keeps database operations explicit and easy to audit.
+            - **RapidFuzz** handles camera aliases and reasonable spelling errors locally.
+            - **`zoneinfo`** gives deterministic `Asia/Singapore` date conversion.
+            - **pytest** verifies guardrails, context, date boundaries, and filter shape.
+
+            No agent framework or autonomous tool loop is used. One narrow model call plus
+            deterministic Python offers a stronger reliability–complexity trade-off for
+            this bounded task, and keeps the extraction instructions short and auditable.
+            """
+        )
+
+    with safety_tab:
+        st.subheader("Defense in depth")
+        st.markdown(
+            """
+            User text is never sent directly to MongoDB. A request must pass several
+            independent boundaries before any read occurs:
+
+            - **Input normalization:** conservative corrections such as
+              `lastest → latest`; unknown words and camera names remain unchanged.
+            - **Pre-query guardrails:** reject writes, schema changes, arbitrary database
+              commands, prompt/credential disclosure, and rule-override attempts.
+            - **Scope decision:** unrelated requests are rejected because the agent only
+              supports traffic-frame retrieval.
+            - **Strict validation:** malformed model output and unknown plan properties are
+              rejected by Pydantic.
+            - **Camera validation:** requested names must resolve confidently to an active,
+              canonical camera; ambiguous matches return clarification suggestions.
+            - **Date validation:** ranges, month lengths, weekdays, overnight windows, and
+              Singapore-to-UTC boundaries are resolved deterministically.
+            - **Query allowlist:** only `camera_name` and `captured_at`, with `$and`, `$or`,
+              `$in`, `$gte`, and `$lt`, may reach the repository.
+            - **Execution boundary:** only `find` is exposed; results are capped at 100.
+            """
+        )
+        st.warning(
+            "SQL injection, MongoDB command injection, insert, update, delete, drop, "
+            "truncate, upsert, `$where`, `eval`, and prompt-override requests are rejected "
+            "before query execution."
+        )
+        st.subheader("Safe failure behavior")
+        st.markdown(
+            """
+            Missing secrets, invalid API credentials, OpenAI timeouts/rate limits,
+            malformed plans, low-confidence cameras, empty results, and MongoDB failures
+            produce bounded user-facing errors. Exceptions never display API keys,
+            connection strings, prompts, or database credentials.
+            """
+        )
+
+    with context_tab:
+        st.subheader("Structured conversational context")
+        st.markdown(
+            """
+            Context is stored as validated filters—not as an unrestricted transcript.
+            Clear follow-up phrases inherit relevant omitted constraints, while explicitly
+            supplied values replace the corresponding prior values.
+
+            **Example**
+
+            1. `Show me frames from CTE.`
+            2. `How about only those from this week?`
+
+            The second request retains `Central Expressway` and adds the current-week date
+            range. In contrast, a fresh command such as `Show me frames on 1 August 2026`
+            does not silently inherit an old camera. Clear Chat resets the structured
+            context completely.
+            """
+        )
+        st.subheader("Ambiguity and transparency")
+        st.markdown(
+            """
+            Low-confidence or competing camera matches result in clarification rather than
+            a guessed query. The SQL Agent's **Query Processing** tab exposes the safe
+            operational trace—normalization, validation, resolved values, allowlisted
+            filter, sort, limit, and row count—without exposing hidden model reasoning or
+            system prompts.
+
+            This design favors predictable, reviewable behavior over autonomous agentic
+            complexity: the model interprets language, while application code owns policy,
+            state, query construction, and database access.
+            """
+        )
 
 
 def architecture_page() -> None:
