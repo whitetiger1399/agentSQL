@@ -6,6 +6,7 @@ from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from .config import ConfigurationError, Settings
 from .database import DatabaseUnavailable, MongoRepository
@@ -309,7 +310,49 @@ def _render_chat_bubble(role: str, message: str) -> None:
         )
 
 
-def _render_result(result_data: Mapping[str, Any]) -> None:
+def _render_paginated_dataframe(
+    rows: list[dict[str, Any]], key: str, page_size: int = 20, height: int = 390
+) -> None:
+    total_rows = len(rows)
+    total_pages = max(1, (total_rows + page_size - 1) // page_size)
+    page_key = f"{key}_page"
+    current_page = min(max(int(st.session_state.get(page_key, 1)), 1), total_pages)
+    st.session_state[page_key] = current_page
+    start = (current_page - 1) * page_size
+    end = min(start + page_size, total_rows)
+    st.dataframe(
+        rows[start:end],
+        use_container_width=True,
+        hide_index=True,
+        height=height,
+        key=f"{key}_table",
+    )
+    if total_pages > 1:
+        previous_col, page_col, next_col = st.columns([1, 1.5, 1])
+        if previous_col.button(
+            "← Previous",
+            key=f"{key}_previous",
+            disabled=current_page == 1,
+            use_container_width=True,
+        ):
+            st.session_state[page_key] = current_page - 1
+            st.rerun()
+        page_col.markdown(
+            f"<div style='text-align:center;padding:.45rem 0'>"
+            f"Page {current_page} of {total_pages}<br>Rows {start + 1}–{end} of {total_rows}</div>",
+            unsafe_allow_html=True,
+        )
+        if next_col.button(
+            "Next →",
+            key=f"{key}_next",
+            disabled=current_page == total_pages,
+            use_container_width=True,
+        ):
+            st.session_state[page_key] = current_page + 1
+            st.rerun()
+
+
+def _render_result(result_data: Mapping[str, Any], key: str) -> None:
     result = AgentResult.model_validate(result_data)
     if result.interpreted_filters:
         with st.expander("Interpreted filters", expanded=False):
@@ -317,7 +360,7 @@ def _render_result(result_data: Mapping[str, Any]) -> None:
     if result.suggestions:
         st.caption("Suggestions: " + " · ".join(result.suggestions))
     if result.records:
-        st.dataframe(result.records, use_container_width=True, hide_index=True)
+        _render_paginated_dataframe(result.records, key=key, page_size=20, height=360)
 
 
 def _collection_panel(repo: MongoRepository | None) -> None:
@@ -344,12 +387,11 @@ def _collection_panel(repo: MongoRepository | None) -> None:
             f"from `{st.session_state.selected_collection}` (maximum 100)."
         )
         if rows:
-            st.dataframe(
+            _render_paginated_dataframe(
                 rows,
-                use_container_width=True,
-                hide_index=True,
-                height=520,
                 key=f"preview_{st.session_state.selected_collection}",
+                page_size=20,
+                height=430,
             )
         else:
             st.info("This collection is empty.")
@@ -403,7 +445,7 @@ def sql_agent_page() -> None:
     except (ConfigurationError, DatabaseUnavailable):
         repo = None
 
-    chat_col, data_col = st.columns([1.9, 1], gap="medium")
+    chat_col, data_col = st.columns([2.15, 1], gap="small")
     with chat_col:
         title_col, clear_col = st.columns([4, 1])
         title_col.markdown("### Conversation")
@@ -416,12 +458,37 @@ def sql_agent_page() -> None:
             st.session_state.chat_messages = _initial_chat()
         if "query_context" not in st.session_state:
             st.session_state.query_context = SessionContext().model_dump(mode="json")
-        conversation = st.container(height=400, border=True)
+        latest_assistant_index = max(
+            (
+                index
+                for index, item in enumerate(st.session_state.chat_messages)
+                if item["role"] == "assistant"
+            ),
+            default=-1,
+        )
+        should_scroll = bool(st.session_state.get("scroll_to_latest_answer", False))
+        conversation = st.container(height=430, border=True)
         with conversation:
-            for item in st.session_state.chat_messages:
+            for index, item in enumerate(st.session_state.chat_messages):
+                if should_scroll and index == latest_assistant_index:
+                    st.markdown('<div id="latest-agent-answer"></div>', unsafe_allow_html=True)
                 _render_chat_bubble(item["role"], item["message"])
                 if item.get("result"):
-                    _render_result(item["result"])
+                    _render_result(item["result"], key=f"chat_result_{index}")
+
+        if should_scroll:
+            components.html(
+                """
+                <script>
+                setTimeout(() => {
+                    const marker = window.parent.document.getElementById('latest-agent-answer');
+                    if (marker) marker.scrollIntoView({behavior: 'smooth', block: 'start'});
+                }, 120);
+                </script>
+                """,
+                height=0,
+            )
+            st.session_state.scroll_to_latest_answer = False
 
         message = st.chat_input("Ask about traffic-camera frames…")
         if message:
@@ -452,6 +519,7 @@ def sql_agent_page() -> None:
                     "result": result.model_dump(mode="json"),
                 }
             )
+            st.session_state.scroll_to_latest_answer = True
             st.rerun()
     with data_col:
         explorer_tab, processing_tab = st.tabs(["Data Explorer", "Query Processing"])
