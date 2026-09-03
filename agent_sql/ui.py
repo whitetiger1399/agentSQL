@@ -24,24 +24,43 @@ def apply_theme() -> None:
         <style>
         .block-container {padding-top: 2rem; padding-bottom: 4rem; max-width: 1500px;}
         [data-testid="stSidebar"] {border-right: 1px solid rgba(125,125,125,.18);}
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stMarkdownContainer"] li {
+            color: #E6EDF6; font-size: 1rem; line-height: 1.65;
+        }
+        [data-testid="stMarkdownContainer"] a {
+            color: #7DD3FC; font-weight: 600; text-decoration-thickness: 1px;
+            text-underline-offset: 3px;
+        }
+        [data-testid="stMarkdownContainer"] code:not(pre code) {
+            color: #F8FAFC; background: #26364F; border: 1px solid #40536F;
+            border-radius: 5px; padding: .08rem .32rem; font-size: .94em;
+            font-weight: 600;
+        }
+        [data-testid="stCaptionContainer"] {
+            color: #BAC7D8; font-size: .88rem; line-height: 1.45;
+        }
+        button[data-baseweb="tab"] {color: #CBD5E1; font-size: .96rem; font-weight: 600;}
+        button[data-baseweb="tab"][aria-selected="true"] {color: #FFFFFF;}
+        [data-testid="stWidgetLabel"] p {color: #DCE6F3; font-size: .95rem; font-weight: 600;}
         .hero {
             padding: 1.5rem 1.65rem; border: 1px solid rgba(125,125,125,.2);
             border-radius: 18px; background: linear-gradient(135deg, rgba(30,136,229,.12), rgba(0,200,160,.08));
             margin-bottom: 1.2rem;
         }
         .hero h1 {font-size: 2rem; margin: 0 0 .35rem 0;}
-        .hero p {margin: 0; color: #8492a6;}
+        .hero p {margin: 0; color: #C3CEDD; font-size: 1rem;}
         .agent-header {
             display: flex; align-items: baseline; gap: .8rem; padding: .45rem 0 .6rem;
             border-bottom: 1px solid rgba(125,125,125,.18); margin-bottom: .65rem;
         }
         .agent-header h1 {font-size: 1.65rem; margin: 0; white-space: nowrap;}
-        .agent-header p {margin: 0; color: #8492a6; font-size: .92rem;}
+        .agent-header p {margin: 0; color: #C3CEDD; font-size: .96rem;}
         .session-date {
-            margin-left: auto; white-space: nowrap; color: #35D5C4;
-            font-size: .78rem; font-weight: 600; text-align: right;
+            margin-left: auto; white-space: nowrap; color: #E2E8F0;
+            font-size: .88rem; font-weight: 650; text-align: right;
         }
-        .eyebrow {font-size: .76rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #29b6a6;}
+        .eyebrow {font-size: .82rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; color: #93C5FD;}
         .status-pill {padding: .35rem .65rem; border-radius: 999px; border: 1px solid rgba(125,125,125,.25); font-size: .8rem;}
         div[data-testid="stChatMessage"] {
             border: 1px solid rgba(125,125,125,.15); border-radius: 16px;
