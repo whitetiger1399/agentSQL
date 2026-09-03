@@ -22,7 +22,10 @@ class FakeRepository:
         self.limit = None
 
     def camera_documents(self):
-        return [{"camera_name": "Pan Island Expressway", "acronym": "PIE", "aliases": [], "active": True}]
+        return [
+            {"camera_name": "Pan Island Expressway", "acronym": "PIE", "aliases": [], "active": True},
+            {"camera_name": "Central Expressway", "acronym": "CTE", "aliases": [], "active": True},
+        ]
 
     def find_traffic_frames(self, query_filter, limit=100, sort_descending=False):
         self.filter = query_filter
@@ -141,3 +144,31 @@ def test_relative_month_range_overrides_model_unsupported_rejection():
     assert result.message == (
         "Found 1 frame for Pan Island Expressway (2026-08-15 to 2026-08-18)."
     )
+
+
+def test_follow_up_keeps_camera_and_adds_this_week():
+    repo = FakeRepository([{"frame_id": 1}])
+    first = run_query(
+        "Show me frames from CTE.",
+        SessionContext(),
+        FakePlanner(QueryPlan(camera_terms=["CTE"])),
+        repo,
+        now=datetime(2026, 9, 2, tzinfo=timezone.utc),
+    )
+    second = run_query(
+        "How about only those from this week?",
+        first.context,
+        FakePlanner(
+            QueryPlan(
+                date_window=DateWindow(
+                    kind="relative", relative_period="this_week"
+                )
+            )
+        ),
+        repo,
+        now=datetime(2026, 9, 2, tzinfo=timezone.utc),
+    )
+    assert second.status == "ok"
+    assert second.context.camera_names == ["Central Expressway"]
+    assert second.interpreted_filters["date"] == "This week"
+    assert repo.filter["$and"][0] == {"camera_name": "Central Expressway"}

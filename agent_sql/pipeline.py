@@ -10,7 +10,15 @@ from .database import MAX_RESULTS, DatabaseUnavailable
 from .date_extraction import extract_relative_month_range
 from .guardrails import obvious_rejection
 from .llm import PlanExtractionError
-from .models import AgentResult, Intent, ProcessingStep, QueryPlan, ResolvedFilters, SessionContext
+from .models import (
+    AgentResult,
+    DateKind,
+    Intent,
+    ProcessingStep,
+    QueryPlan,
+    ResolvedFilters,
+    SessionContext,
+)
 from .resolution import ResolutionError, build_mongo_filter, merge_context, resolve_query_plan
 from .typos import normalize_query_text
 
@@ -72,17 +80,32 @@ def _camera_mentions(message: str, cameras: list[dict[str, Any]]) -> list[str]:
 
 
 def apply_context_policy(
-    message: str, plan: QueryPlan, cameras: list[dict[str, Any]]
+    message: str,
+    plan: QueryPlan,
+    cameras: list[dict[str, Any]],
+    context: SessionContext,
 ) -> QueryPlan:
     """Keep context for clear follow-ups, not fresh standalone requests."""
-    if not _FRESH_QUERY.search(message) or _FOLLOW_UP.search(message):
+    if plan.reset_context:
+        return plan
+    mentions = _camera_mentions(message, cameras)
+    if _FOLLOW_UP.search(message):
+        return plan.model_copy(
+            update={
+                "camera_terms": mentions,
+                "inherit_cameras": not mentions and bool(context.camera_names),
+                "inherit_date": plan.date_window.kind == DateKind.NONE,
+                "inherit_time": True,
+            }
+        )
+    if not _FRESH_QUERY.search(message):
         return plan
     updates: dict[str, Any] = {
         "inherit_cameras": False,
         "inherit_date": False,
         "inherit_time": False,
     }
-    updates["camera_terms"] = _camera_mentions(message, cameras)
+    updates["camera_terms"] = mentions
     return plan.model_copy(update=updates)
 
 
@@ -207,7 +230,7 @@ def run_query(
         )
         plan = apply_deterministic_date_extraction(normalized_message, plan)
         cameras = repository.camera_documents()
-        plan = apply_context_policy(normalized_message, plan, cameras)
+        plan = apply_context_policy(normalized_message, plan, cameras, context)
         steps.append(
             ProcessingStep(
                 name="3. Structured value extraction",
