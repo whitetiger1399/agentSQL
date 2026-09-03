@@ -424,7 +424,7 @@ def docs_page() -> None:
 def architecture_page() -> None:
     hero("Production Architecture", "A constrained path from natural language to read-only results.")
     st.image(
-        DOCS_IMAGE_DIR / "production-architecture.png",
+        DOCS_IMAGE_DIR / "production-architecture-v2.png",
         caption=(
             "End-to-end production flow: Streamlit UI, guarded OpenAI extraction, "
             "deterministic Python resolution, and read-only MongoDB Atlas access."
