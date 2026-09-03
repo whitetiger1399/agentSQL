@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
@@ -16,6 +17,7 @@ from .pipeline import run_query
 
 
 APP_NAME = "Camera AgentSQL"
+DOCS_IMAGE_DIR = Path(__file__).resolve().parent.parent / "assets" / "docs"
 
 
 def apply_theme() -> None:
@@ -62,6 +64,14 @@ def apply_theme() -> None:
         }
         .eyebrow {font-size: .82rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; color: #93C5FD;}
         .status-pill {padding: .35rem .65rem; border-radius: 999px; border: 1px solid rgba(125,125,125,.25); font-size: .8rem;}
+        .docs-visual-label {
+            color: #C7D2E2; font-size: .84rem; line-height: 1.45;
+            text-align: center; margin: .55rem .4rem 0;
+        }
+        [data-testid="stImage"] img {
+            border: 1px solid rgba(125,211,252,.24); border-radius: 18px;
+            box-shadow: 0 14px 34px rgba(0,0,0,.24);
+        }
         div[data-testid="stChatMessage"] {
             border: 1px solid rgba(125,125,125,.15); border-radius: 16px;
             padding: .3rem .65rem; margin-bottom: .7rem; max-width: 88%;
@@ -205,8 +215,10 @@ def docs_page() -> None:
     )
 
     with data_tab:
-        st.subheader("Synthetic traffic-camera dataset")
-        st.markdown(
+        copy_col, visual_col = st.columns([1.45, 1], gap="large")
+        with copy_col:
+            st.subheader("Synthetic traffic-camera dataset")
+            st.markdown(
             """
             The sample data was generated as a predictable hourly grid for **10 traffic
             cameras** across **33 Singapore calendar days**, from 1 August through
@@ -218,9 +230,7 @@ def docs_page() -> None:
             timestamps remain UTC. For example, midnight on 1 August in Singapore is
             stored as `2026-07-31T16:00:00Z`.
             """
-        )
-        cameras_col, frames_col = st.columns(2, gap="large")
-        with cameras_col:
+            )
             st.markdown("#### Table: `cameras`")
             st.markdown(
                 """
@@ -235,7 +245,6 @@ def docs_page() -> None:
                 | `active` | Whether the camera is queryable |
                 """
             )
-        with frames_col:
             st.markdown("#### Table: `traffic_frames`")
             st.markdown(
                 """
@@ -249,8 +258,8 @@ def docs_page() -> None:
                 | `frame_img_url` | Stored frame path shown as text |
                 """
             )
-        st.subheader("Database setup and permissions")
-        st.markdown(
+            st.subheader("Database setup and permissions")
+            st.markdown(
             """
             MongoDB Atlas is accessed with a **read-only database user**. Credentials are
             supplied through Streamlit Secrets and are never committed to GitHub. The
@@ -259,11 +268,23 @@ def docs_page() -> None:
             `find` against **`traffic_frames`**. The `cameras` table is used internally for
             name resolution and cannot be selected as an agent query target.
             """
-        )
+            )
+        with visual_col:
+            st.image(
+                DOCS_IMAGE_DIR / "data-schema.png",
+                use_container_width=True,
+            )
+            st.markdown(
+                '<p class="docs-visual-label">Synthetic camera events flow into a UTC '
+                "time-series store, with camera metadata kept as a separate reference table.</p>",
+                unsafe_allow_html=True,
+            )
 
     with design_tab:
-        st.subheader("Deliberately constrained agent design")
-        st.markdown(
+        copy_col, visual_col = st.columns([1.45, 1], gap="large")
+        with copy_col:
+            st.subheader("Deliberately constrained agent design")
+            st.markdown(
             """
             The application uses one OpenAI Responses API call for **entity and intent
             extraction only**. Structured Output must match a strict Pydantic `QueryPlan`
@@ -283,9 +304,9 @@ def docs_page() -> None:
             8. Execute a capped, read-only `traffic_frames.find(...)` call.
             9. Show the interpreted filters, processing trace, and table results.
             """
-        )
-        st.subheader("Tool and model choices")
-        st.markdown(
+            )
+            st.subheader("Tool and model choices")
+            st.markdown(
             """
             - **Streamlit** provides a compact multipage review UI and session state.
             - **OpenAI Responses API + Pydantic** provides typed extraction instead of
@@ -299,11 +320,20 @@ def docs_page() -> None:
             deterministic Python offers a stronger reliability–complexity trade-off for
             this bounded task, and keeps the extraction instructions short and auditable.
             """
-        )
+            )
+        with visual_col:
+            st.image(DOCS_IMAGE_DIR / "agent-design.png", use_container_width=True)
+            st.markdown(
+                '<p class="docs-visual-label">The model performs one narrow extraction; '
+                "validated Python code owns filters, policy, and read-only execution.</p>",
+                unsafe_allow_html=True,
+            )
 
     with safety_tab:
-        st.subheader("Defense in depth")
-        st.markdown(
+        copy_col, visual_col = st.columns([1.45, 1], gap="large")
+        with copy_col:
+            st.subheader("Defense in depth")
+            st.markdown(
             """
             User text is never sent directly to MongoDB. A request must pass several
             independent boundaries before any read occurs:
@@ -324,25 +354,34 @@ def docs_page() -> None:
               `$in`, `$gte`, and `$lt`, may reach the repository.
             - **Execution boundary:** only `find` is exposed; results are capped at 100.
             """
-        )
-        st.warning(
-            "SQL injection, MongoDB command injection, insert, update, delete, drop, "
-            "truncate, upsert, `$where`, `eval`, and prompt-override requests are rejected "
-            "before query execution."
-        )
-        st.subheader("Safe failure behavior")
-        st.markdown(
+            )
+            st.warning(
+                "SQL injection, MongoDB command injection, insert, update, delete, drop, "
+                "truncate, upsert, `$where`, `eval`, and prompt-override requests are rejected "
+                "before query execution."
+            )
+            st.subheader("Safe failure behavior")
+            st.markdown(
             """
             Missing secrets, invalid API credentials, OpenAI timeouts/rate limits,
             malformed plans, low-confidence cameras, empty results, and MongoDB failures
             produce bounded user-facing errors. Exceptions never display API keys,
             connection strings, prompts, or database credentials.
             """
-        )
+            )
+        with visual_col:
+            st.image(DOCS_IMAGE_DIR / "safety-validation.png", use_container_width=True)
+            st.markdown(
+                '<p class="docs-visual-label">Layered validation allows safe reads through '
+                "while blocking writes, injection, and secret-disclosure attempts.</p>",
+                unsafe_allow_html=True,
+            )
 
     with context_tab:
-        st.subheader("Structured conversational context")
-        st.markdown(
+        copy_col, visual_col = st.columns([1.45, 1], gap="large")
+        with copy_col:
+            st.subheader("Structured conversational context")
+            st.markdown(
             """
             Context is stored as validated filters—not as an unrestricted transcript.
             Clear follow-up phrases inherit relevant omitted constraints, while explicitly
@@ -358,9 +397,9 @@ def docs_page() -> None:
             does not silently inherit an old camera. Clear Chat resets the structured
             context completely.
             """
-        )
-        st.subheader("Ambiguity and transparency")
-        st.markdown(
+            )
+            st.subheader("Ambiguity and transparency")
+            st.markdown(
             """
             Low-confidence or competing camera matches result in clarification rather than
             a guessed query. The SQL Agent's **Query Processing** tab exposes the safe
@@ -372,7 +411,14 @@ def docs_page() -> None:
             complexity: the model interprets language, while application code owns policy,
             state, query construction, and database access.
             """
-        )
+            )
+        with visual_col:
+            st.image(DOCS_IMAGE_DIR / "context-reliability.png", use_container_width=True)
+            st.markdown(
+                '<p class="docs-visual-label">Structured filters combine valid follow-ups; '
+                "ambiguous requests branch to clarification instead of being guessed.</p>",
+                unsafe_allow_html=True,
+            )
 
 
 def architecture_page() -> None:
