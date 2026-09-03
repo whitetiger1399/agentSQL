@@ -423,12 +423,26 @@ def docs_page() -> None:
 
 def architecture_page() -> None:
     hero("Production Architecture", "A constrained path from natural language to read-only results.")
-    st.code(
-        """User → scope guardrail → OpenAI structured QueryPlan → Pydantic validation
-     → camera/date/context resolver → deterministic filter builder
-     → read-only PyMongo repository → capped results → Streamlit UI""",
-        language="text",
+    st.image(
+        DOCS_IMAGE_DIR / "production-architecture.png",
+        caption=(
+            "End-to-end production flow: Streamlit UI, guarded OpenAI extraction, "
+            "deterministic Python resolution, and read-only MongoDB Atlas access."
+        ),
+        use_container_width=True,
     )
+    with st.expander("View architecture as text"):
+        st.code(
+            """User → Streamlit Cloud UI → scope guardrail
+     → OpenAI Responses API (entity extraction only)
+     → Pydantic QueryPlan → Python camera/date/context resolver
+     → allowlisted filter builder → read-only PyMongo repository
+     → MongoDB Atlas traffic_frames.find() → capped results → Streamlit UI
+
+Streamlit Secrets → OPENAI_API_KEY / MONGODB_URI
+Security → read only • 100-row limit • Asia/Singapore to UTC • no LLM-generated queries""",
+            language="text",
+        )
     c1, c2, c3 = st.columns(3)
     c1.metric("Query limit", "100 rows")
     c2.metric("Application timezone", "Asia/Singapore")
