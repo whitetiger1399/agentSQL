@@ -71,6 +71,8 @@ return future-dated records through broad queries.
 - The LLM may only produce a validated structured query plan.
 - Build MongoDB filters deterministically in Python.
 - Only permit read operations.
+- Connect to MongoDB Atlas with a read-only database user so server-side permissions
+  remain a hard authorization boundary even if an upstream intent check fails.
 - Limit results to 100 records.
 - Maintain conversation context as structured filters.
 - Never commit API keys, database credentials or connection strings.

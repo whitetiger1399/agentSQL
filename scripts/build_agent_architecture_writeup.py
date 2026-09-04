@@ -216,6 +216,7 @@ def build():
 
     story += [Paragraph("4  Guardrails and query validation", styles["H1x"])]
     story += [Paragraph("The database never sees raw user instructions", styles["Lead"])]
+    story += [callout("TWO INDEPENDENT DEFENSE LAYERS  ·  Intent layer: guardrails and the constrained LLM reject unsafe intent and emit only a typed plan.  ·  Hard authorization layer: MongoDB Atlas authenticates a read-only user, so server-side permissions deny writes even if an upstream control fails."), Spacer(1, 10)]
     safety_table = Table([[
         [Paragraph("<b>Before the model</b>", styles["H2x"]), bullet("Reject insert, update, delete, drop, truncate, upsert, schema changes, arbitrary MongoDB commands, secret disclosure, and rule-override attempts."), bullet("Reject empty or oversized requests before API or database work.")],
         img("safety-validation.png", 2.9 * inch),
@@ -223,8 +224,8 @@ def build():
     safety_table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (0, 0), 16), ("RIGHTPADDING", (1, 0), (1, 0), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
     story += [safety_table]
     story += [Paragraph("Validation layers", styles["H2x"])]
-    story += [bullet("QueryPlan permits only known fields and constrained enums; result_limit cannot exceed 100."), bullet("Camera terms must resolve to active canonical records. Ambiguous matches return suggestions instead of guessing."), bullet("Dates resolve in Asia/Singapore, then convert to UTC half-open bounds using $gte and $lt. Overnight ranges advance the end date deterministically."), bullet("Mongo filters accept only camera_name and captured_at, and only $and, $or, $in, $gte, and $lt."), bullet("The user query path exposes only traffic_frames.find(...). Database credentials are separately restricted to read permissions."), bullet("Authentication, rate-limit, timeout, malformed-output, resolution, empty-result, and database failures become bounded, secret-safe messages.")]
-    story += [callout("Injection resistance does not depend on recognizing every malicious phrase. Even if text passes the first check, it cannot become executable syntax or escape the repository allowlist.")]
+    story += [bullet("QueryPlan permits only known fields and constrained enums; result_limit cannot exceed 100."), bullet("Camera terms must resolve to active canonical records. Ambiguous matches return suggestions instead of guessing."), bullet("Dates resolve in Asia/Singapore, then convert to UTC half-open bounds using $gte and $lt. Overnight ranges advance the end date deterministically."), bullet("Mongo filters accept only camera_name and captured_at, and only $and, $or, $in, $gte, and $lt."), bullet("The user query path exposes only traffic_frames.find(...). Atlas credentials belong to a read-only database user—the final server-enforced barrier against writes and schema changes."), bullet("Authentication, rate-limit, timeout, malformed-output, resolution, empty-result, and database failures become bounded, secret-safe messages.")]
+    story += [callout("Injection resistance does not depend on the LLM recognizing every malicious phrase. User text cannot become executable syntax, the repository allowlist blocks unapproved operations, and MongoDB permissions provide the final hard stop.")]
     story += [PageBreak()]
 
     story += [Paragraph("5  Context, ambiguity, and time", styles["H1x"])]

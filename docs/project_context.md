@@ -42,6 +42,19 @@ MongoDB filter:
 
 ## Guardrails
 
+### Two independent injection-defense layers
+
+1. **Intent layer:** application guardrails and the constrained LLM reject malicious
+   or write-oriented intent. The model produces only a validated `QueryPlan`; it never
+   produces executable SQL, MongoDB syntax, or database commands.
+2. **Hard authorization layer:** the MongoDB Atlas connection uses a read-only database
+   user. Even if an upstream control failed, server-side permissions still deny inserts,
+   updates, deletes, and schema changes.
+
+A deterministic Python allowlist sits between them and permits only approved fields,
+operators, and `traffic_frames.find(...)`. Injection resistance therefore does not rely
+on the LLM alone.
+
 Reject:
 
 - Insert, update and delete requests

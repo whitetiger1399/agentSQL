@@ -343,6 +343,20 @@ def docs_page() -> None:
             User text is never sent directly to MongoDB. A request must pass several
             independent boundaries before any read occurs:
 
+            > 🛡️ **Injection defense has two independent enforcement layers.**
+            >
+            > **1 — Intent layer:** application guardrails and the constrained LLM reject
+            > unsafe intent; the model can return only a typed plan, never executable SQL
+            > or MongoDB syntax.
+            >
+            > **2 — Hard authorization layer:** the Atlas connection authenticates as a
+            > **read-only MongoDB user**. Even if an upstream control failed, database
+            > permissions still deny inserts, updates, deletes, and schema changes.
+
+            Between those layers, a deterministic Python allowlist permits only approved
+            fields, operators, and the `traffic_frames.find(...)` operation. Safety does
+            not depend on the model making the right decision alone.
+
             - **Input normalization:** conservative corrections such as
               `lastest → latest`; unknown words and camera names remain unchanged.
             - **Pre-query guardrails:** reject writes, schema changes, arbitrary database
@@ -358,6 +372,8 @@ def docs_page() -> None:
             - **Query allowlist:** only `camera_name` and `captured_at`, with `$and`, `$or`,
               `$in`, `$gte`, and `$lt`, may reach the repository.
             - **Execution boundary:** only `find` is exposed; results are capped at 100.
+            - **Database permission boundary:** MongoDB Atlas credentials belong to a
+              read-only user, providing a final server-enforced barrier against writes.
             """
             )
             st.warning(
@@ -436,12 +452,6 @@ def architecture_page() -> None:
         ),
         use_container_width=True,
     )
-    with st.expander("View previous architecture"):
-        st.image(
-            DOCS_IMAGE_DIR / "production-architecture_backup.png",
-            caption="Original production architecture diagram (preserved).",
-            use_container_width=True,
-        )
     with st.expander("View architecture as text"):
         st.code(
             """Deployment: Developer → GitHub main → Streamlit Cloud → Streamlit App
@@ -739,11 +749,6 @@ def sql_agent_page() -> None:
         f'<div class="session-date">Session date · {session_date}</div></div>',
         unsafe_allow_html=True,
     )
-    st.info(
-        "Testing dataset: synthetic hourly frames from 1 August to 30 September 2026. "
-        "Future-dated rows support testing later in September, but the agent will not "
-        "return frames after the Singapore session date shown above."
-    )
     try:
         repo: MongoRepository | None = get_repository()
     except (ConfigurationError, DatabaseUnavailable):
@@ -826,6 +831,13 @@ def sql_agent_page() -> None:
             st.session_state.scroll_to_latest_answer = True
             st.rerun()
     with data_col:
+        st.warning(
+            "**Important — synthetic test data**\n\n"
+            "Hourly frames cover **1 August–30 September 2026**. Future-dated rows "
+            "exist only for testing later in September; the agent will not return "
+            "frames after the Singapore session date shown above.",
+            icon="⚠️",
+        )
         examples_tab, processing_tab = st.tabs(["Example Queries", "Query Processing"])
         with examples_tab:
             _example_queries_panel()
