@@ -57,8 +57,11 @@ Fields:
 - `camera_name`: canonical string
 - `frame_img_url`: string
 
-The sample dataset contains 7,920 hourly frame records covering
-1 August through 2 September 2026.
+The synthetic sample dataset contains 14,640 hourly frame records covering
+1 August through 30 September 2026. Future-dated records exist only so relative
+date queries can still be tested later in September. The application must reject
+requests for dates after the current Asia/Singapore session date and must not
+return future-dated records through broad queries.
 
 ## Implementation rules
 
@@ -68,6 +71,8 @@ The sample dataset contains 7,920 hourly frame records covering
 - The LLM may only produce a validated structured query plan.
 - Build MongoDB filters deterministically in Python.
 - Only permit read operations.
+- Connect to MongoDB Atlas with a read-only database user so server-side permissions
+  remain a hard authorization boundary even if an upstream intent check fails.
 - Limit results to 100 records.
 - Maintain conversation context as structured filters.
 - Never commit API keys, database credentials or connection strings.

@@ -221,10 +221,15 @@ def docs_page() -> None:
             st.markdown(
             """
             The sample data was generated as a predictable hourly grid for **10 traffic
-            cameras** across **33 Singapore calendar days**, from 1 August through
-            2 September 2026. That produces `10 × 33 × 24 = 7,920` synthetic frame
+            cameras** across **61 Singapore calendar days**, from 1 August through
+            30 September 2026. That produces `10 × 61 × 24 = 14,640` synthetic frame
             records. Each record has a stable numeric frame ID, a UTC capture timestamp,
             a canonical camera name, and a deterministic local image path.
+
+            Future-dated rows exist only to support realistic relative-date testing later
+            in September. The app fixes a global Singapore session date when it loads,
+            rejects explicit requests after that date, and prevents broad queries from
+            returning future frames.
 
             Dates presented by users are interpreted in `Asia/Singapore`; database
             timestamps remain UTC. For example, midnight on 1 August in Singapore is
@@ -338,6 +343,20 @@ def docs_page() -> None:
             User text is never sent directly to MongoDB. A request must pass several
             independent boundaries before any read occurs:
 
+            > 🛡️ **Injection defense has two independent enforcement layers.**
+            >
+            > **1 — Intent layer:** application guardrails and the constrained LLM reject
+            > unsafe intent; the model can return only a typed plan, never executable SQL
+            > or MongoDB syntax.
+            >
+            > **2 — Hard authorization layer:** the Atlas connection authenticates as a
+            > **read-only MongoDB user**. Even if an upstream control failed, database
+            > permissions still deny inserts, updates, deletes, and schema changes.
+
+            Between those layers, a deterministic Python allowlist permits only approved
+            fields, operators, and the `traffic_frames.find(...)` operation. Safety does
+            not depend on the model making the right decision alone.
+
             - **Input normalization:** conservative corrections such as
               `lastest → latest`; unknown words and camera names remain unchanged.
             - **Pre-query guardrails:** reject writes, schema changes, arbitrary database
@@ -353,6 +372,8 @@ def docs_page() -> None:
             - **Query allowlist:** only `camera_name` and `captured_at`, with `$and`, `$or`,
               `$in`, `$gte`, and `$lt`, may reach the repository.
             - **Execution boundary:** only `find` is exposed; results are capped at 100.
+            - **Database permission boundary:** MongoDB Atlas credentials belong to a
+              read-only user, providing a final server-enforced barrier against writes.
             """
             )
             st.warning(
@@ -424,20 +445,22 @@ def docs_page() -> None:
 def architecture_page() -> None:
     hero("Production Architecture", "A constrained path from natural language to read-only results.")
     st.image(
-        DOCS_IMAGE_DIR / "production-architecture.png",
+        DOCS_IMAGE_DIR / "production-architecture-3.png",
         caption=(
-            "End-to-end production flow: Streamlit UI, guarded OpenAI extraction, "
-            "deterministic Python resolution, and read-only MongoDB Atlas access."
+            "GitHub-to-Streamlit deployment and the complete numbered runtime flow. "
+            "Solid arrows stay within a layer; dashed arrows cross layer boundaries."
         ),
         use_container_width=True,
     )
     with st.expander("View architecture as text"):
         st.code(
-            """User → Streamlit Cloud UI → scope guardrail
+            """Deployment: Developer → GitHub main → Streamlit Cloud → Streamlit App
+
+Runtime: User → Streamlit App ⇢ scope guardrail
      → OpenAI Responses API (entity extraction only)
      → Pydantic QueryPlan → Python camera/date/context resolver
-     → allowlisted filter builder → read-only PyMongo repository
-     → MongoDB Atlas traffic_frames.find() → capped results → Streamlit UI
+     → allowlisted filter builder ⇢ read-only PyMongo repository
+     → MongoDB Atlas traffic_frames.find() ⇢ capped results → Streamlit App
 
 Streamlit Secrets → OPENAI_API_KEY / MONGODB_URI
 Security → read only • 100-row limit • Asia/Singapore to UTC • no LLM-generated queries""",
@@ -533,8 +556,10 @@ def schema_page() -> None:
                 """
             )
             st.info(
-                "The `traffic_frames` table contains 7,920 hourly frame records "
-                "from 1 August to 2 September 2026."
+                "The `traffic_frames` table contains 14,640 synthetic hourly frame records "
+                "from 1 August to 30 September 2026. Future-dated rows exist only for "
+                "testing; the SQL Agent rejects dates after the current Singapore session "
+                "date and never returns future frames through broad queries."
             )
     with explorer_tab:
         try:
@@ -806,6 +831,13 @@ def sql_agent_page() -> None:
             st.session_state.scroll_to_latest_answer = True
             st.rerun()
     with data_col:
+        st.warning(
+            "**Important — synthetic test data**\n\n"
+            "Hourly frames cover **1 August–30 September 2026**. Future-dated rows "
+            "exist only for testing later in September; the agent will not return "
+            "frames after the Singapore session date shown above.",
+            icon="⚠️",
+        )
         examples_tab, processing_tab = st.tabs(["Example Queries", "Query Processing"])
         with examples_tab:
             _example_queries_panel()

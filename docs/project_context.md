@@ -13,6 +13,17 @@
 9. Execute a read-only query with a result limit.
 10. Display frame metadata and interpreted filters.
 
+## Synthetic data window
+
+- `traffic_frames` contains synthetic hourly data from 1 August through
+  30 September 2026 (14,640 records across 10 cameras).
+- Future-dated rows exist only to keep relative-date testing useful throughout
+  September—for example, asking for “yesterday” on 25 September.
+- The session date is fixed when the app loads in `Asia/Singapore`.
+- An explicit request after the session date is rejected as a future-frame query.
+- A query with no date is automatically bounded from 1 August through the earlier
+  of the session date or 30 September, so stored future rows are never returned.
+
 ## Example
 
 User:
@@ -30,6 +41,19 @@ MongoDB filter:
 }
 
 ## Guardrails
+
+### Two independent injection-defense layers
+
+1. **Intent layer:** application guardrails and the constrained LLM reject malicious
+   or write-oriented intent. The model produces only a validated `QueryPlan`; it never
+   produces executable SQL, MongoDB syntax, or database commands.
+2. **Hard authorization layer:** the MongoDB Atlas connection uses a read-only database
+   user. Even if an upstream control failed, server-side permissions still deny inserts,
+   updates, deletes, and schema changes.
+
+A deterministic Python allowlist sits between them and permits only approved fields,
+operators, and `traffic_frames.find(...)`. Injection resistance therefore does not rely
+on the LLM alone.
 
 Reject:
 

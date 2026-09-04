@@ -20,6 +20,8 @@ from .models import (
 
 SGT = ZoneInfo("Asia/Singapore")
 UTC = timezone.utc
+SYNTHETIC_DATA_START = date(2026, 8, 1)
+SYNTHETIC_DATA_END = date(2026, 9, 30)
 WEEKDAY_INDEX = {
     "monday": 0,
     "tuesday": 1,
@@ -103,16 +105,45 @@ def merge_context(plan: QueryPlan, context: SessionContext) -> tuple[QueryPlan, 
     return QueryPlan.model_validate(data), base
 
 
-def _date_bounds(window: DateWindow, now: datetime) -> tuple[date | None, date | None, str]:
+def _enforce_data_window(first: date, last: date, today: date) -> None:
+    if first > today or last > today:
+        raise ResolutionError(
+            "You are asking for future frames. The synthetic dataset includes future-dated "
+            "records for testing, but future information is not queryable by design. "
+            f"Please choose a date on or before {today.isoformat()} (Asia/Singapore)."
+        )
+    if first < SYNTHETIC_DATA_START or last > SYNTHETIC_DATA_END:
+        raise ResolutionError(
+            "The synthetic test data is available only from 2026-08-01 through "
+            "2026-09-30. Please choose a date within that range."
+        )
+
+
+def _date_bounds(window: DateWindow, now: datetime) -> tuple[date, date, str]:
     today = now.astimezone(SGT).date()
     if window.kind == DateKind.NONE:
-        return None, None, "Any date"
+        available_end = min(today, SYNTHETIC_DATA_END)
+        if available_end < SYNTHETIC_DATA_START:
+            raise ResolutionError(
+                "The synthetic test data begins on 2026-08-01; no records are available "
+                "for the current session date yet."
+            )
+        return (
+            SYNTHETIC_DATA_START,
+            available_end,
+            f"Synthetic data through today: {SYNTHETIC_DATA_START.isoformat()} to "
+            f"{available_end.isoformat()}",
+        )
     if window.kind == DateKind.EXACT:
         assert window.exact_date is not None
-        return window.exact_date, window.exact_date, window.exact_date.isoformat()
+        first = last = window.exact_date
+        _enforce_data_window(first, last, today)
+        return first, last, window.exact_date.isoformat()
     if window.kind == DateKind.RANGE:
         assert window.start_date is not None and window.end_date is not None
-        return window.start_date, window.end_date, f"{window.start_date.isoformat()} to {window.end_date.isoformat()}"
+        first, last = window.start_date, window.end_date
+        _enforce_data_window(first, last, today)
+        return first, last, f"{first.isoformat()} to {last.isoformat()}"
     if window.kind == DateKind.RELATIVE_MONTH_RANGE:
         assert window.month_offset is not None
         assert window.start_day is not None and window.end_day is not None
@@ -126,28 +157,40 @@ def _date_bounds(window: DateWindow, now: datetime) -> tuple[date | None, date |
             )
         first = date(year, month, window.start_day)
         last = date(year, month, window.end_day)
+        _enforce_data_window(first, last, today)
         return first, last, f"{first.isoformat()} to {last.isoformat()}"
 
     period = window.relative_period
     if period == RelativePeriod.TODAY:
+        _enforce_data_window(today, today, today)
         return today, today, "Today"
     if period == RelativePeriod.YESTERDAY:
         day = today - timedelta(days=1)
+        _enforce_data_window(day, day, today)
         return day, day, "Yesterday"
     if period == RelativePeriod.TOMORROW:
         day = today + timedelta(days=1)
+        _enforce_data_window(day, day, today)
         return day, day, "Tomorrow"
     if period == RelativePeriod.THIS_WEEK:
         start = today - timedelta(days=today.weekday())
-        return start, start + timedelta(days=6), "This week"
+        last = today
+        _enforce_data_window(start, last, today)
+        return start, last, "This week"
     if period == RelativePeriod.LAST_WEEK:
         end = today - timedelta(days=today.weekday() + 1)
-        return end - timedelta(days=6), end, "Last week"
+        first = end - timedelta(days=6)
+        _enforce_data_window(first, end, today)
+        return first, end, "Last week"
     count = window.relative_count or 1
     if period == RelativePeriod.LAST_N_DAYS:
-        return today - timedelta(days=count - 1), today, f"Last {count} days"
+        first = today - timedelta(days=count - 1)
+        _enforce_data_window(first, today, today)
+        return first, today, f"Last {count} days"
     if period == RelativePeriod.NEXT_N_DAYS:
-        return today, today + timedelta(days=count - 1), f"Next {count} days"
+        last = today + timedelta(days=count - 1)
+        _enforce_data_window(today, last, today)
+        return today, last, f"Next {count} days"
     raise ResolutionError("The date window could not be resolved.")
 
 
@@ -171,13 +214,15 @@ def resolve_query_plan(
 ) -> tuple[ResolvedFilters, SessionContext]:
     now = now or datetime.now(UTC)
     camera_names = resolve_camera_terms(plan.camera_terms, cameras)
+    if (
+        plan.date_window.kind == DateKind.NONE
+        and not plan.weekdays
+        and (plan.start_time is not None or plan.end_time is not None)
+    ):
+        raise ResolutionError("A time range needs a date or date range.")
     first, last, description = _date_bounds(plan.date_window, now)
 
     intervals: list[tuple[datetime, datetime]] = []
-    if first is None and plan.weekdays:
-        last = now.astimezone(SGT).date()
-        first = last - timedelta(days=29)
-        description = "Matching weekdays in the last 30 days"
     if first is not None and last is not None:
         day = first
         wanted = {WEEKDAY_INDEX[value] for value in plan.weekdays}
